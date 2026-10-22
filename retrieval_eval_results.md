@@ -13,7 +13,7 @@ Here we grade (1) retrieval and (2) faithfulness.
 ## 1. Retrieval quality — cross-encoder reranker, before vs after
 
 **Reranker:** `cross-encoder/ms-marco-MiniLM-L-6-v2`. The base retriever pulls 30
-candidates; the reranker rescoring every `(query, chunk)` pair and resorts them.
+candidates; the reranker rescores every `(query, chunk)` pair and re-sorts them.
 Because reranking only reorders the pool, reranked recall@k can never exceed the
 base retriever's recall@30 (here **0.40** chunk-level).
 
@@ -158,9 +158,16 @@ collection. Same chunks, questions, gold, and reranker — only the embedding ch
 1. **The embedding swap is the real fix — bigger than the reranker.** BGE doubles
    chunk-level recall@10 (0.20 → 0.40) and lifts paper-level recall@10 from 0.60 to
    **0.90** (recall@5 0.50 → 0.90). It rescues the *true misses* a reranker never
-   could: Q3 ("epitranscriptome") went from not-in-top-300 to **rank 6** — BGE bridges
-   the "epitranscriptome ↔ m6A / N6-methyladenosine" vocabulary gap that MiniLM
-   couldn't — and Q10 (transgenerational / Dias) entered the pool at rank 27.
+   could: Q3 ("epitranscriptome") went from not-in-top-300 to **rank 6**, and Q10
+   (transgenerational / Dias) entered the pool at rank 27. Q3 was not a vocabulary
+   gap: "epitranscriptome" appears in exactly 3 chunks, all in the Widagdo paper and
+   all within the text MiniLM reads, yet MiniLM ranked them 50th, 132nd and 667th
+   (BGE: 3rd, 73rd and 6th). An embedding encodes a chunk's overall meaning, so one
+   rare term barely moves it; a keyword search would have found all three, which
+   argues for hybrid (keyword + embedding) retrieval. BGE also reads up to 512
+   tokens per chunk versus MiniLM's 256, and about half of all chunks are longer
+   than 256 tokens, so MiniLM never embedded their second half. The swap changed
+   both factors at once, so this experiment can't split the credit between them.
 
 2. **A weak reranker helps a weak retriever but hurts a strong one.** The same
    cross-encoder that improved MiniLM (Q2 28 → 4) *degraded* BGE's already-good
